@@ -1,0 +1,15 @@
+
+.rainbow {
+    background: linear-gradient(90deg,red,orange,yellow,green,blue,indigo,violet,red);
+    background-size: 200% 100%;
+    animation: rainbow 8s linear infinite;
+}
+
+@keyframes rainbow {
+    from {
+        background-position: 0% 0%;
+    }
+    to {
+        background-position: 200% 0%;
+    }
+}
