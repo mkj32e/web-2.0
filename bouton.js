@@ -5,7 +5,7 @@ document.addEventListener("DOMContentLoaded", function() {
     
     if (bouton) {
         bouton.addEventListener("click", function() {
-            window.location.href = "jeu.html";
+            window.location.href = "js.js";
         });
     }
 });
