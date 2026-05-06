@@ -1,159 +1,188 @@
 
-let vie = 5;
-let WIDTH = 600;
-let HEIGHT = 400;
-let score = 0;
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<div id="game-container" style="display:flex; flex-direction:column; align-items:center; padding: 1rem 0;">
+</div>
+<script>
+new p5(function(p) {
+  const W = 600, H = 400;
+  let menuB = true;
+  let joueurX, joueurY, fin, tirCooldown, dernierTir, tirsMax, killCompteur, ennemiesVitesse, pvBoss;
+  let tirs = [], ennemies = [];
+  let keys = {};
 
-let shoot = [];
-let monstre = [];
-let shoot_m = [];
+  function resetGame() {
+    joueurX = 300; joueurY = 350;
+    fin = false;
+    tirCooldown = 300;
+    dernierTir = p.millis();
+    tirsMax = 10;
+    killCompteur = 0;
+    ennemiesVitesse = 3;
+    pvBoss = 3;
+    tirs = []; ennemies = [];
+    menuB = true;
+  }
 
-let x = 200;
-let y = 350;
+  p.setup = function() {
+    let canvas = p.createCanvas(W, H);
+    canvas.parent('game-container');
+    p.textFont('monospace');
+    resetGame();
+  };
 
-let c_spawn = 0;
-let c_tir = 0;
+  p.draw = function() {
+    p.background(220);
+    if (menuB) drawMenu();
+    else drawGame();
+  };
 
-function tir() {
-  shoot.push([x, y]);
-}
+  function drawMenu() {
+    p.fill(30);
+    p.textSize(28);
+    p.textAlign(p.CENTER);
+    p.text('SPACE SHOOTER', W/2, 100);
+    p.textSize(14);
+    p.fill(80);
+    p.text('Fleches pour bouger | Clic pour tirer', W/2, 135);
 
-function spawn_monstre() {
-  monstre.push([random(WIDTH), random(200), 0]);
-}
+    let bx = 220, by = 160, bw = 160, bh = 50;
+    let hover = p.mouseX > bx && p.mouseX < bx+bw && p.mouseY > by && p.mouseY < by+bh;
+    p.fill(hover ? p.color(60,160,255) : p.color(100, 200, 255));
+    p.noStroke();
+    p.rect(bx, by, bw, bh, 8);
+    p.fill(255);
+    p.textSize(18);
+    p.text('JOUER', W/2, by+32);
+    p.textAlign(p.LEFT);
+  }
 
-function tir_monstre() {
-  for (let i = 0; i < monstre.length; i++) {
-    monstre[i][2] += 1;
-    if (monstre[i][2] > 60) {
-      shoot_m.push([monstre[i][0], monstre[i][1]]);
-      monstre[i][2] = 0;
+  p.mousePressed = function() {
+    if (menuB) {
+      let bx = 220, by = 160, bw = 160, bh = 50;
+      if (p.mouseX > bx && p.mouseX < bx+bw && p.mouseY > by && p.mouseY < by+bh) {
+        menuB = false;
+        fin = false;
+        killCompteur = 0;
+        ennemiesVitesse = 3;
+        pvBoss = 3;
+        tirs = []; ennemies = [];
+      }
+    }
+  };
+
+  function drawGame() {
+    if (fin) {
+      p.fill(30);
+      p.textSize(32);
+      p.textAlign(p.CENTER);
+      p.text('GAME OVER', W/2, H/2 - 20);
+      p.textSize(16);
+      p.text('Kills : ' + killCompteur, W/2, H/2 + 20);
+      p.fill(100, 200, 255);
+      p.noStroke();
+      p.rect(W/2 - 70, H/2 + 50, 140, 40, 8);
+      p.fill(255);
+      p.textSize(16);
+      p.text('Rejouer', W/2, H/2 + 76);
+      p.textAlign(p.LEFT);
+      return;
+    }
+
+    // mouvement joueur
+    if (keys['ArrowLeft']) joueurX -= 7;
+    if (keys['ArrowRight']) joueurX += 7;
+    joueurX = p.constrain(joueurX, 10, W-10);
+
+    // tir
+    if (p.mouseIsPressed && tirs.length < tirsMax && p.millis() - dernierTir > tirCooldown) {
+      dernierTir = p.millis();
+      tirs.push([joueurX, joueurY]);
+    }
+
+    spawnEnnemi();
+
+    // joueur
+    p.fill(50, 120, 255);
+    p.noStroke();
+    p.ellipse(joueurX, joueurY, 20, 20);
+
+    // ennemis
+    for (let i = ennemies.length - 1; i >= 0; i--) {
+      let e = ennemies[i];
+      e[1] += ennemiesVitesse * 0.3;
+      if (e[1] >= H) { fin = true; break; }
+      let isBoss = killCompteur % 10 === 0 && killCompteur !== 0;
+      p.fill(isBoss ? p.color(200, 30, 30) : p.color(200, 40, 0));
+      p.ellipse(e[0], e[1], e[2], e[2]);
+    }
+
+    // tirs
+    for (let i = tirs.length - 1; i >= 0; i--) {
+      tirs[i][1] -= 5;
+      p.fill(255, 230, 0);
+      p.ellipse(tirs[i][0], tirs[i][1], 8, 8);
+      if (tirs[i][1] < 0) tirs.splice(i, 1);
+    }
+
+    collisions();
+
+    // HUD
+    p.fill(30);
+    p.textSize(16);
+    p.textAlign(p.LEFT);
+    p.text('Kills : ' + killCompteur, 10, 30);
+    if (killCompteur % 10 === 0 && killCompteur !== 0) {
+      p.fill(200, 30, 30);
+      p.text('BOSS PV : ' + pvBoss, W - 120, 30);
     }
   }
-}
 
-function mouv_tir() {
-  for (let i = 0; i < shoot.length; i++) {
-    shoot[i][1] -= 5;
-  }
-  for (let i = 0; i < shoot_m.length; i++) {
-    shoot_m[i][1] += 5;
-  }
-}
+  p.mouseClicked = function() {
+    if (fin) {
+      let bx = W/2 - 70, by = H/2 + 50, bw = 140, bh = 40;
+      if (p.mouseX > bx && p.mouseX < bx+bw && p.mouseY > by && p.mouseY < by+bh) {
+        resetGame();
+        menuB = false;
+      }
+    }
+  };
 
-function collision_monstre() {
-  for (let i = 0; i < shoot.length; i++) {
-    for (let j = 0; j < monstre.length; j++) {
-      if (
-        monstre[j][0] - 15 < shoot[i][0] &&
-        shoot[i][0] < monstre[j][0] + 15 &&
-        monstre[j][1] - 15 < shoot[i][1] &&
-        shoot[i][1] < monstre[j][1] + 15
-      ) {
-        score += 1;
-        shoot.splice(i, 1);
-        monstre.splice(j, 1);
-        return;
+  function spawnEnnemi() {
+    if (ennemies.length === 0) {
+      if (killCompteur % 10 === 0 && killCompteur !== 0) {
+        pvBoss = 3;
+        ennemies.push([p.random(20, W-20), ennemiesVitesse * 0.7, p.random(50, 80)]);
+      } else {
+        ennemies.push([p.random(20, W-20), ennemiesVitesse, p.random(30, 50)]);
       }
     }
   }
-}
 
-function collision_balle() {
-  for (let i = 0; i < shoot_m.length; i++) {
-    if (
-      x - 10 < shoot_m[i][0] &&
-      shoot_m[i][0] < x + 10 &&
-      y - 10 < shoot_m[i][1] &&
-      shoot_m[i][1] < y + 10
-    ) {
-      vie -= 1;
-      shoot_m.splice(i, 1);
-      return;
-    }
-  }
-}
-
-function texture() {
-  fill(0);
-
-  ellipse(x, y, 20, 20);
-
-  for (let i = 0; i < monstre.length; i++) {
-    ellipse(monstre[i][0], monstre[i][1], 30, 30);
-  }
-
-  for (let i = 0; i < shoot.length; i++) {
-    ellipse(shoot[i][0], shoot[i][1], 10, 10);
-  }
-
-  for (let i = 0; i < shoot_m.length; i++) {
-    ellipse(shoot_m[i][0], shoot_m[i][1], 10, 10);
-  }
-}
-
-function setup() {
-  createCanvas(WIDTH, HEIGHT);
-}
-
-function draw() {
-  background(220);
-
-  // Déplacement joueur
-  if (keyIsDown(LEFT_ARROW)) x -= 10;
-  if (keyIsDown(RIGHT_ARROW)) x += 10;
-  if (keyIsDown(UP_ARROW)) y -= 10;
-  if (keyIsDown(DOWN_ARROW)) y += 10;
-
-  // Tir clavier
-  if (keyIsDown(71)) { // touche 'g'
-    if (c_tir > 10) {
-      tir();
-      c_tir = 0;
+  function collisions() {
+    for (let i = tirs.length - 1; i >= 0; i--) {
+      for (let j = ennemies.length - 1; j >= 0; j--) {
+        let d = p.dist(tirs[i][0], tirs[i][1], ennemies[j][0], ennemies[j][1]);
+        if (d < ennemies[j][2] * 0.8) {
+          tirs.splice(i, 1);
+          if (killCompteur % 10 === 0 && killCompteur !== 0) {
+            pvBoss--;
+            if (pvBoss <= 0) {
+              ennemies.splice(j, 1);
+              killCompteur++;
+              ennemiesVitesse += 0.5;
+            }
+          } else {
+            ennemies.splice(j, 1);
+            killCompteur++;
+            ennemiesVitesse += 0.5;
+          }
+          break;
+        }
+      }
     }
   }
 
-  // Tir souris
-  if (mouseIsPressed) {
-    if (c_tir > 10) {
-      tir();
-      c_tir = 0;
-    }
-  }
-
-  // Compteurs
-  c_tir++;
-  c_spawn++;
-
-  // Spawn monstres
-  if (c_spawn > 60) {
-    spawn_monstre();
-    c_spawn = 0;
-  }
-
-  // Logique
-  tir_monstre();
-  mouv_tir();
-  collision_monstre();
-  collision_balle();
-
-  // Dessin
-  texture();
-
-  // ❤️ Vies
-  fill(0);
-  textSize(20);
-  text("Vies : " + vie, 10, 20);
-
-  // 🎯 Score
-  text("Score : " + score, 10, 40);
-
-  // 💀 Game Over
-  if (vie <= 0) {
-    background(0);
-    fill(255, 0, 0);
-    textSize(40);
-    text("GAME OVER", WIDTH / 2 - 120, HEIGHT / 2);
-    noLoop();
-  }
-}
+  p.keyPressed = function() { keys[p.key] = true; };
+  p.keyReleased = function() { keys[p.key] = false; };
+});
+</script>
