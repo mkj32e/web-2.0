@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Space Shooter</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+</head>
+<body>
+
+<form name="response" action="/reponse" method="GET">
+        Entrez a :
+        <input type="text" name="inputa" required><br>
+
+        <button id="btn" type="button">commence ta partie</button>
+    </form>
+
+    
+    <script src="bouton.js"></script>
+
+<div id="game-container" style="display:flex; flex-direction:column; align-items:center;"></div>
+
+<h3>🏆 Leaderboard</h3>
+<ul id="leaderboard"></ul>
+
+<script>
+new p5(function(p) {
+  const W = 600, H = 400;
+  let menuB = true;
+  let joueurX, joueurY, fin, tirCooldown, dernierTir, killCompteur;
+  let tirs = [], ennemies = [];
+  let keys = {};
+  let scoreEnvoye = false;
+
+  function resetGame() {
+    joueurX = 300; joueurY = 350;
+    fin = false;
+    tirCooldown = 300;
+    dernierTir = p.millis();
+    killCompteur = 0;
+    tirs = []; ennemies = [];
+    scoreEnvoye = false;
+  }
+
+  p.setup = function() {
+    let canvas = p.createCanvas(W, H);
+    canvas.parent('game-container');
+    resetGame();
+    chargerScores();
+  };
+
+  p.draw = function() {
+    p.background(220);
+    if (menuB) drawMenu();
+    else drawGame();
+  };
+
+  function drawMenu() {
+    p.textAlign(p.CENTER);
+    p.textSize(28);
+    p.text("SPACE SHOOTER", W/2, 100);
+
+    let bx = 220, by = 160, bw = 160, bh = 50;
+    p.rect(bx, by, bw, bh);
+    p.fill(255);
+    p.textSize(16);
+    p.text("JOUER", W/2, by+30);
+  }
+
+  p.mousePressed = function() {
+    let bx = 220, by = 160, bw = 160, bh = 50;
+    if (menuB && p.mouseX > bx && p.mouseX < bx+bw && p.mouseY > by && p.mouseY < by+bh) {
+      menuB = false;
+      resetGame();
+    }
+  };
+
+  function drawGame() {
+    if (fin) {
+      p.textAlign(p.CENTER);
+      p.textSize(30);
+      p.fill(0);
+      p.text("GAME OVER", W/2, 150);
+      p.text("Kills: " + killCompteur, W/2, 200);
+
+      if (!scoreEnvoye) {
+        envoyerScore();
+        scoreEnvoye = true;
+      }
+      return;
+    }
+
+    if (keys['ArrowLeft']) joueurX -= 5;
+    if (keys['ArrowRight']) joueurX += 5;
+
+    if (p.mouseIsPressed && p.millis() - dernierTir > tirCooldown) {
+      tirs.push([joueurX, joueurY]);
+      dernierTir = p.millis();
+    }
+
+    if (p.frameCount % 60 === 0) {
+      ennemies.push([p.random(W), 0, 30]);
+    }
+
+    p.ellipse(joueurX, joueurY, 20);
+
+    for (let i = ennemies.length-1; i>=0; i--) {
+      ennemies[i][1] += 2;
+      p.ellipse(ennemies[i][0], ennemies[i][1], ennemies[i][2]);
+
+      if (ennemies[i][1] > H) fin = true;
+    }
+
+    for (let i = tirs.length-1; i>=0; i--) {
+      tirs[i][1] -= 5;
+      p.ellipse(tirs[i][0], tirs[i][1], 5);
+
+      for (let j = ennemies.length-1; j>=0; j--) {
+        let d = p.dist(tirs[i][0], tirs[i][1], ennemies[j][0], ennemies[j][1]);
+        if (d < 20) {
+          ennemies.splice(j,1);
+          tirs.splice(i,1);
+          killCompteur++;
+          break;
+        }
+      }
+    }
+
+    p.text("Kills: " + killCompteur, 10, 20);
+  }
+
+  function envoyerScore() {
+    fetch('/save_score', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kills: killCompteur })
+    }).then(() => chargerScores());
+  }
+
+  function chargerScores() {
+    fetch('/scores')
+      .then(res => res.json())
+      .then(data => {
+        let ul = document.getElementById("leaderboard");
+        ul.innerHTML = "";
+        data.forEach(score => {
+          let li = document.createElement("li");
+          li.textContent = score + " kills";
+          ul.appendChild(li);
+        });
+      });
+  }
+
+  p.keyPressed = () => keys[p.key] = true;
+  p.keyReleased = () => keys[p.key] = false;
+
+});
+</script>
+
+</body>
+</html>

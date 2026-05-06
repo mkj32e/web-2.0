@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Space Shooter</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+</head>
+<body>
+
+<form name="response" action="/reponse" method="GET">
+        Entrez a :
+        <input type="text" name="inputa" required><br>
+
+        <button id="btn" type="button">commence ta partie</button>
+    </form>
+
+    
+    <script src="bouton.js"></script>
+
+<div id="game-container" style="display:flex; flex-direction:column; align-items:center;"></div>
+
+<h3>🏆 Leaderboard</h3>
+<ul id="leaderboard"></ul>
+
+
+<script>
+new p5(function(p) {
+
+  let vie = 5;
+  let score = 0;
+
+  let shoot = [];
+  let monstre = [];
+  let shoot_m = [];
+
+  let x = 200;
+  let y = 350;
+
+  let c_spawn = 0;
+  let c_tir = 0;
+  let scoreEnvoye = false;
+
+  function tir() {
+    shoot.push([x, y]);
+  }
+
+  function spawn_monstre() {
+    monstre.push([p.random(600), p.random(200), 0]);
+  }
+
+  function tir_monstre() {
+    for (let i = 0; i < monstre.length; i++) {
+      monstre[i][2] += 1;
+      if (monstre[i][2] > 60) {
+        shoot_m.push([monstre[i][0], monstre[i][1]]);
+        monstre[i][2] = 0;
+      }
+    }
+  }
+
+  function mouv_tir() {
+    for (let i = 0; i < shoot.length; i++) {
+      shoot[i][1] -= 5;
+    }
+    for (let i = 0; i < shoot_m.length; i++) {
+      shoot_m[i][1] += 5;
+    }
+  }
+
+  function collision_monstre() {
+    for (let i = shoot.length - 1; i >= 0; i--) {
+      for (let j = monstre.length - 1; j >= 0; j--) {
+        if (
+          monstre[j][0] - 15 < shoot[i][0] &&
+          shoot[i][0] < monstre[j][0] + 15 &&
+          monstre[j][1] - 15 < shoot[i][1] &&
+          shoot[i][1] < monstre[j][1] + 15
+        ) {
+          score++;
+          shoot.splice(i, 1);
+          monstre.splice(j, 1);
+          break;
+        }
+      }
+    }
+  }
+
+  function collision_balle() {
+    for (let i = shoot_m.length - 1; i >= 0; i--) {
+      if (
+        x - 10 < shoot_m[i][0] &&
+        shoot_m[i][0] < x + 10 &&
+        y - 10 < shoot_m[i][1] &&
+        shoot_m[i][1] < y + 10
+      ) {
+        vie--;
+        shoot_m.splice(i, 1);
+      }
+    }
+  }
+
+  function texture() {
+    p.fill(0);
+
+    // joueur
+    p.ellipse(x, y, 20, 20);
+
+    // monstres
+    for (let i = 0; i < monstre.length; i++) {
+      p.ellipse(monstre[i][0], monstre[i][1], 30, 30);
+    }
+
+    // tirs joueur
+    for (let i = 0; i < shoot.length; i++) {
+      p.ellipse(shoot[i][0], shoot[i][1], 10, 10);
+    }
+
+    // tirs monstres
+    for (let i = 0; i < shoot_m.length; i++) {
+      p.ellipse(shoot_m[i][0], shoot_m[i][1], 10, 10);
+    }
+  }
+
+  p.setup = function() {
+    let canvas = p.createCanvas(600, 400);
+    canvas.parent("game-container");
+  };
+
+  p.draw = function() {
+    p.background(220);
+
+    // déplacement
+    if (p.keyIsDown(p.LEFT_ARROW)) x -= 5;
+    if (p.keyIsDown(p.RIGHT_ARROW)) x += 5;
+    if (p.keyIsDown(p.UP_ARROW)) y -= 5;
+    if (p.keyIsDown(p.DOWN_ARROW)) y += 5;
+
+    // tir
+    if (p.mouseIsPressed && c_tir > 10) {
+      tir();
+      c_tir = 0;
+    }
+
+    c_tir++;
+    c_spawn++;
+
+    if (c_spawn > 60) {
+      spawn_monstre();
+      c_spawn = 0;
+    }
+
+    tir_monstre();
+    mouv_tir();
+    collision_monstre();
+    collision_balle();
+
+    texture();
+
+    // UI
+    p.fill(0);
+    p.textSize(16);
+    p.text("Vies: " + vie, 10, 20);
+    p.text("Score: " + score, 10, 40);
+
+    if (vie <= 0) {
+      p.background(0);
+      p.fill(255, 0, 0);
+      p.textSize(40);
+      p.textAlign(p.CENTER);
+      p.text("GAME OVER", 300, 200);
+      p.noLoop();
+    }
+  };
+  function envoyerScore() {
+    fetch('/save_score', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kills: score })
+    }).then(() => score());
+  }
+  function chargerScores() {
+    fetch('/scores')
+      .then(res => res.json())
+      .then(data => {
+        let ul = document.getElementById("leaderboard");
+        ul.innerHTML = "";
+        data.forEach(score => {
+          let li = document.createElement("li");
+          li.textContent = score + " kills";
+          ul.appendChild(li);
+        });
+      });
+  }
+
+});
+</script>
+
+
+</body>
+</html>

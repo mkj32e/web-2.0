@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Space Shooter</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+</head>
+<body>
+
+<div id="game-container" style="display:flex; flex-direction:column; align-items:center; padding: 1rem 0;"></div>
+
+<script>
+
+// =======================
+// NOM JOUEUR
+// =======================
+let playerName = prompt("Quel est ton nom ?");
+if (!playerName) playerName = "Joueur";
+
+// =======================
+// FLASK SAVE
+// =======================
+function sauvegarderScore(nom, score) {
+  fetch("http://127.0.0.1:5000/save-score", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ nom, score })
+  })
+  .then(res => res.text())
+  .then(data => console.log(data))
+  .catch(err => console.error(err));
+}
+
+// =======================
+// JEU P5
+// =======================
+new p5(function(p) {
+
+  const W = 600, H = 400;
+
+  let menu = true;
+  let fin = false;
+
+  let joueurX, joueurY;
+  let tirs = [], ennemies = [];
+  let keys = {};
+
+  let killCompteur = 0;
+  let ennemiesVitesse = 3;
+  let pvBoss = 3;
+
+  let tirCooldown = 300;
+  let lastTir = 0;
+  let tirsMax = 10;
+
+  let scoreSaved = false;
+
+  // =======================
+  function resetGame() {
+    joueurX = 300;
+    joueurY = 350;
+    tirs = [];
+    ennemies = [];
+    killCompteur = 0;
+    ennemiesVitesse = 3;
+    pvBoss = 3;
+    fin = false;
+    menu = true;
+    scoreSaved = false;
+  }
+
+  // =======================
+  p.setup = function() {
+    let canvas = p.createCanvas(W, H);
+    canvas.parent("game-container");
+    p.textFont("monospace");
+    resetGame();
+  };
+
+  // =======================
+  p.draw = function() {
+    p.background(220);
+
+    if (menu) drawMenu();
+    else drawGame();
+  };
+
+  // =======================
+  function drawMenu() {
+    p.fill(30);
+    p.textSize(28);
+    p.textAlign(p.CENTER);
+    p.text("SPACE SHOOTER", W/2, 100);
+
+    p.textSize(14);
+    p.fill(80);
+    p.text("Joueur : " + playerName, W/2, 130);
+
+    let bx = 220, by = 160, bw = 160, bh = 50;
+    let hover = p.mouseX > bx && p.mouseX < bx+bw && p.mouseY > by && p.mouseY < by+bh;
+
+    p.fill(hover ? p.color(60,160,255) : p.color(100,200,255));
+    p.noStroke();
+    p.rect(bx, by, bw, bh, 8);
+
+    p.fill(255);
+    p.textSize(18);
+    p.text("JOUER", W/2, by+32);
+
+    p.textAlign(p.LEFT);
+  }
+
+  // =======================
+  p.mousePressed = function() {
+    if (menu) {
+      let bx = 220, by = 160, bw = 160, bh = 50;
+      if (p.mouseX > bx && p.mouseX < bx+bw && p.mouseY > by && p.mouseY < by+bh) {
+        menu = false;
+      }
+    }
+  };
+
+  // =======================
+  function drawGame() {
+
+    // ===== GAME OVER =====
+    if (fin) {
+
+      if (!scoreSaved) {
+        sauvegarderScore(playerName, killCompteur);
+        scoreSaved = true;
+      }
+
+      p.fill(30);
+      p.textSize(32);
+      p.textAlign(p.CENTER);
+      p.text("GAME OVER", W/2, H/2 - 20);
+
+      p.textSize(16);
+      p.text("Kills : " + killCompteur, W/2, H/2 + 20);
+
+      p.fill(100,200,255);
+      p.rect(W/2 - 70, H/2 + 50, 140, 40, 8);
+
+      p.fill(255);
+      p.text("Rejouer", W/2, H/2 + 76);
+
+      p.textAlign(p.LEFT);
+      return;
+    }
+
+    // =======================
+    // MOUVEMENT
+    // =======================
+    if (keys["ArrowLeft"]) joueurX -= 7;
+    if (keys["ArrowRight"]) joueurX += 7;
+    joueurX = p.constrain(joueurX, 10, W-10);
+
+    // =======================
+    // TIR
+    // =======================
+    if (p.mouseIsPressed && tirs.length < tirsMax && p.millis() - lastTir > tirCooldown) {
+      lastTir = p.millis();
+      tirs.push([joueurX, joueurY]);
+    }
+
+    spawnEnnemi();
+
+    // =======================
+    // JOUEUR
+    // =======================
+    p.fill(50,120,255);
+    p.ellipse(joueurX, joueurY, 20, 20);
+
+    // =======================
+    // ENNEMIS
+    // =======================
+    for (let i = ennemies.length - 1; i >= 0; i--) {
+
+      let e = ennemies[i];
+      e[1] += ennemiesVitesse * 0.3;
+
+      if (e[1] > H) fin = true;
+
+      let isBoss = e[3];
+
+      p.fill(isBoss ? p.color(200,30,30) : p.color(200,40,0));
+      p.ellipse(e[0], e[1], e[2], e[2]);
+    }
+
+    // =======================
+    // TIRS
+    // =======================
+    for (let i = tirs.length - 1; i >= 0; i--) {
+      tirs[i][1] -= 6;
+      p.fill(255,230,0);
+      p.ellipse(tirs[i][0], tirs[i][1], 8, 8);
+
+      if (tirs[i][1] < 0) tirs.splice(i, 1);
+    }
+
+    collisions();
+
+    // =======================
+    // HUD
+    // =======================
+    p.fill(0);
+    p.textSize(16);
+    p.text("Kills : " + killCompteur, 10, 30);
+
+    if (killCompteur % 10 === 0 && killCompteur !== 0) {
+      p.fill(200,30,30);
+      p.text("BOSS PV : " + pvBoss, W - 120, 30);
+    }
+  }
+
+  // =======================
+  function spawnEnnemi() {
+    if (ennemies.length === 0) {
+
+      if (killCompteur % 10 === 0 && killCompteur !== 0) {
+        pvBoss = 3;
+        ennemies.push([
+          p.random(20, W-20),
+          ennemiesVitesse * 0.7,
+          p.random(60, 80),
+          true
+        ]);
+      } else {
+        ennemies.push([
+          p.random(20, W-20),
+          ennemiesVitesse,
+          p.random(30, 50),
+          false
+        ]);
+      }
+    }
+  }
+
+  // =======================
+  function collisions() {
+
+    for (let i = tirs.length - 1; i >= 0; i--) {
+      for (let j = ennemies.length - 1; j >= 0; j--) {
+
+        let d = p.dist(tirs[i][0], tirs[i][1], ennemies[j][0], ennemies[j][1]);
+
+        if (d < ennemies[j][2] * 0.8) {
+
+          tirs.splice(i, 1);
+
+          let isBoss = ennemies[j][3];
+
+          if (isBoss) {
+            pvBoss--;
+            if (pvBoss <= 0) {
+              ennemies.splice(j, 1);
+              killCompteur++;
+              ennemiesVitesse += 0.5;
+            }
+          } else {
+            ennemies.splice(j, 1);
+            killCompteur++;
+            ennemiesVitesse += 0.5;
+          }
+
+          break;
+        }
+      }
+    }
+  }
+
+  // =======================
+  p.keyPressed = function() { keys[p.key] = true; };
+  p.keyReleased = function() { keys[p.key] = false; };
+
+});
+</script>
+
+</body>
+</html>
