@@ -132,7 +132,7 @@ new p5(function(p) {
     p.fill(30);
     p.textSize(16);
     p.textAlign(p.LEFT);
-    p.text('Kills : ' + killCompteur, 10, 30);
+    p.text(pseudo + ' | Kills : ' + killCompteur, 10, 30);
     if (killCompteur % 10 === 0 && killCompteur !== 0) {
       p.fill(200, 30, 30);
       p.text('BOSS PV : ' + pvBoss, W - 120, 30);
