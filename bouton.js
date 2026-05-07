@@ -1,11 +1,14 @@
-
 document.addEventListener("DOMContentLoaded", function() {
     const bouton = document.getElementById("btn");
-
     
     if (bouton) {
         bouton.addEventListener("click", function() {
-            window.location.href = "jeu.html";
+            let pseudo = document.querySelector('input[name="inputa"]').value;
+            if (pseudo.trim() !== '') {
+                window.location.href = "jeu.html?pseudo=" + encodeURIComponent(pseudo);
+            } else {
+                alert("Entre ton pseudo !");
+            }
         });
     }
 });
