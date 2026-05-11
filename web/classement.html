@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="rainbow.css">
+    <title>Classement</title>
+    <style>
+        table {
+            margin: 20px auto;
+            border-collapse: collapse;
+            width: 400px;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 10px;
+            text-align: center;
+        }
+        th {
+            background-color: #333;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        h1 {
+            text-align: center;
+        }
+        .bouton {
+            display: block;
+            margin: 20px auto;
+            padding: 10px 20px;
+            background-color: #64c8ff;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body class="rainbow">
+    <h1>Classement</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Rang</th>
+                <th>Pseudo</th>
+                <th>Kills</th>
+            </tr>
+        </thead>
+        <tbody id="tableau">
+        </tbody>
+    </table>
+    <button class="bouton" onclick="window.location.href='index.html'">Retour</button>
+
+    <script src="classement.js"></script>
+</body>
+</html>
