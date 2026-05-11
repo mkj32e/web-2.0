@@ -36,10 +36,10 @@ def save_score():
         'kills': data['kills']
     })
 
-    # Trier du meilleur score au pire
+    
     scores.sort(key=lambda x: x['kills'], reverse=True)
 
-    # Garder top 10
+    
     scores = scores[:10]
 
     with open(SCORE_FILE, 'w') as f:
