@@ -1,0 +1,15 @@
+Projet
+
+Création d’un site web avec un jeu et un classement des joueurs.
+
+Maxime:
+-index.html : page d’accueil
+-jeu.html : page du jeu
+-classement.html : page des scores
+-bouton.js : interactions des boutons
+-rainbow.css : style du site
+
+Ethan:
+-app.py : serveur et logique du jeu
+-score.json : stockage des scores
+-classement.js : affichage du classement
